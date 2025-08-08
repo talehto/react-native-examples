@@ -3,6 +3,7 @@ package com.ttsalarmapp;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
@@ -16,6 +17,8 @@ public class TTSService extends Service {
     private TextToSpeech tts;
     private static final String CHANNEL_ID = "tts_channel";
     private String alarmMessage;
+    private int repeatCount = 0;
+    private static final int MAX_REPEATS = 5;
 
     @Override
     public void onCreate() {
@@ -23,73 +26,63 @@ public class TTSService extends Service {
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(
-                "tts_channel", "TTS Channel", NotificationManager.IMPORTANCE_DEFAULT);
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(channel);
+                CHANNEL_ID, "TTS Channel", NotificationManager.IMPORTANCE_HIGH);
+            
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            manager.createNotificationChannel(channel);
+
+            // 🔹 Intent pysäyttämään palvelu
+            Intent stopIntent = new Intent(this, StopTTSReceiver.class);
+            PendingIntent stopPendingIntent = PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    stopIntent,
+                    PendingIntent.FLAG_IMMUTABLE
+            );
 
             Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("TTS Alarm")
                 .setContentText("Speaking message...")
                 .setSmallIcon(R.mipmap.ic_launcher)
+                .setOngoing(true)
+                .addAction(new Notification.Action.Builder(
+                        null,
+                        "Pysäytä",
+                        stopPendingIntent
+                ).build())
                 .build();
 
             startForeground(1, notification);
         }
 
-        /*tts = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-
-                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override
-                    public void onStart(String utteranceId) {
-                        Log.d("TTSService", "TTS started");
-                    }
-
-                    @Override
-                    public void onDone(String utteranceId) {
-                        Log.d("TTSService", "TTS done, stopping service");
-                        stopSelf(); // ✅ Service is stopped when speech has been done.
-                    }
-
-                    @Override
-                    public void onError(String utteranceId) {
-                        Log.e("TTSService", "TTS error");
-                        stopSelf(); // Service is stopped also in the error situation.
-                    }
-                });
-
-                String message = getIntentMessage();
-                if (message == null || message.trim().isEmpty()) {
-                    message = "Hyvää huomenta! Tämä on herätyksesi."; // Oletusteksti
-                }
-
-                tts.setLanguage(new Locale("fi"));
-                tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
-            }
-        });
-        */
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 🔹 Haetaan viesti Intentistä täällä
+        // Retrieve message from the Intent object.
         if (intent != null) {
             alarmMessage = intent.getStringExtra("alarm_message");
         }
-        if (alarmMessage == null || alarmMessage.trim().isEmpty()) {
-            alarmMessage = "Hyvää huomenta! Tämä on herätyksesi.";
-        }
 
-        // Käynnistetään TTS täällä
+        // Starting the text-to-speech functionality. 
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(Locale.getDefault());
+                tts.setLanguage(new Locale("fi"));
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override
                     public void onStart(String utteranceId) {}
 
                     @Override
                     public void onDone(String utteranceId) {
-                        stopSelf();
+                        repeatCount++;
+                        if (repeatCount < MAX_REPEATS) {
+                            tts.speak(alarmMessage, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
+                        } else {
+                            // Closing a "stop speech"
+                            Intent doneIntent = new Intent("com.ttsalarmapp.ACTION_ALARM_FINISHED");
+                            sendBroadcast(doneIntent);
+                            stopSelf();
+                        }
                     }
 
                     @Override
@@ -98,7 +91,6 @@ public class TTSService extends Service {
                     }
                 });
 
-                tts.setLanguage(new Locale("fi"));
                 tts.speak(alarmMessage, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
             }
         });
@@ -114,6 +106,13 @@ public class TTSService extends Service {
             tts.shutdown();
         }
         super.onDestroy();
+    }
+
+    public void stopSpeaking() {
+        if (tts != null) {
+            tts.stop();
+        }
+        stopSelf();
     }
 
     @Override

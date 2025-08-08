@@ -14,6 +14,7 @@
       android:theme="@style/AppTheme"
       android:supportsRtl="true">
       <receiver android:name=".AlarmReceiver" />
+      <receiver android:name=".StopTTSReceiver" />
       <service
         android:name=".TTSService"
         android:foregroundServiceType="mediaPlayback" 
@@ -30,5 +31,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+      <activity android:name=".AlarmDialogActivity"
+        android:theme="@style/Theme.AppCompat.Dialog.Alert" />
     </application>
 </manifest>
