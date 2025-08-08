@@ -1,10 +1,38 @@
-import React, { useState } from 'react';
-import { Button, View, TextInput, NativeModules, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Button, View, TextInput, NativeModules, Platform, PermissionsAndroid } from 'react-native';
 //import { setAlarm } from './AlarmSetter';
 
 export default function MainScreen() {
 
   const [customText, setCustomText] = useState('');
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          {
+            title: "Notification Permission",
+            message: "This app needs notification permission to show alarm notifications.",
+            buttonNeutral: "Ask Me Later",
+            buttonNegative: "Cancel",
+            buttonPositive: "OK"
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log("Notification permission granted");
+        } else {
+          console.log("Notification permission denied");
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  };
 
   const handleSetAlarm = () => {
     console.log("handleSetAlarm called")

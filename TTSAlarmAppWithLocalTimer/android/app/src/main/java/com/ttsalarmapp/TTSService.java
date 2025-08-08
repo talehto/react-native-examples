@@ -6,12 +6,16 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
 import android.speech.tts.TextToSpeech;
 import java.util.Locale;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
+import androidx.core.app.NotificationCompat;
 
 public class TTSService extends Service {
     private TextToSpeech tts;
@@ -19,10 +23,20 @@ public class TTSService extends Service {
     private String alarmMessage;
     private int repeatCount = 0;
     private static final int MAX_REPEATS = 5;
+    
+    private BroadcastReceiver stopReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            stopSelf();
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
+        
+        // Register broadcast receiver
+        registerReceiver(stopReceiver, new IntentFilter("com.ttsalarmapp.STOP_TTS_SERVICE"));
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(
@@ -31,8 +45,8 @@ public class TTSService extends Service {
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             manager.createNotificationChannel(channel);
 
-            // 🔹 Intent pysäyttämään palvelu
-            Intent stopIntent = new Intent(this, StopTTSReceiver.class);
+            // 🔹 Intent for stop a tts service.
+            Intent stopIntent = new Intent("com.ttsalarmapp.STOP_TTS_SERVICE");
             PendingIntent stopPendingIntent = PendingIntent.getBroadcast(
                     this,
                     0,
@@ -40,16 +54,16 @@ public class TTSService extends Service {
                     PendingIntent.FLAG_IMMUTABLE
             );
 
-            Notification notification = new Notification.Builder(this, CHANNEL_ID)
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("TTS Alarm")
                 .setContentText("Speaking message...")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setOngoing(true)
-                .addAction(new Notification.Action.Builder(
-                        null,
+                .addAction(new NotificationCompat.Action(
+                        R.mipmap.ic_launcher,
                         "Pysäytä",
                         stopPendingIntent
-                ).build())
+                ))
                 .build();
 
             startForeground(1, notification);
@@ -78,7 +92,7 @@ public class TTSService extends Service {
                         if (repeatCount < MAX_REPEATS) {
                             tts.speak(alarmMessage, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
                         } else {
-                            // Closing a "stop speech"
+                            // Closing a "stop speech" dialog.
                             Intent doneIntent = new Intent("com.ttsalarmapp.ACTION_ALARM_FINISHED");
                             sendBroadcast(doneIntent);
                             stopSelf();
@@ -104,6 +118,11 @@ public class TTSService extends Service {
         if (tts != null) {
             tts.stop();
             tts.shutdown();
+        }
+        try {
+            unregisterReceiver(stopReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
         }
         super.onDestroy();
     }
