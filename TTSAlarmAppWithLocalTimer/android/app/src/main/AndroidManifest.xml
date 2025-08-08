@@ -15,7 +15,6 @@
       android:theme="@style/AppTheme"
       android:supportsRtl="true">
       <receiver android:name=".AlarmReceiver" />
-      <receiver android:name=".StopTTSReceiver" />
       <service
         android:name=".TTSService"
         android:foregroundServiceType="mediaPlayback" 
