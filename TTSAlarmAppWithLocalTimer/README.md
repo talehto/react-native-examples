@@ -2,16 +2,20 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 # Creation of the project
 
+```
 npx react-native init TTSAlarmAppWithLocalTimer
 cd TTSAlarmApp
 npm install react-native-tts // currently not in use. Instead native tts component is used.
+```
 
 Compiling android code. I'm not sure whether this is needed.
+```
 cd android
 ./gradlew clean
-
+```
+```
 npx react-native run-android
-
+```
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
