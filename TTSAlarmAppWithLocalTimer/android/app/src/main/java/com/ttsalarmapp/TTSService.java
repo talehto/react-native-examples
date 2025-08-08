@@ -14,6 +14,8 @@ import android.util.Log;
 
 public class TTSService extends Service {
     private TextToSpeech tts;
+    private static final String CHANNEL_ID = "tts_channel";
+    private String alarmMessage;
 
     @Override
     public void onCreate() {
@@ -24,7 +26,7 @@ public class TTSService extends Service {
                 "tts_channel", "TTS Channel", NotificationManager.IMPORTANCE_DEFAULT);
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
-            Notification notification = new Notification.Builder(this, "tts_channel")
+            Notification notification = new Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("TTS Alarm")
                 .setContentText("Speaking message...")
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -33,7 +35,7 @@ public class TTSService extends Service {
             startForeground(1, notification);
         }
 
-        tts = new TextToSpeech(this, status -> {
+        /*tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
 
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
@@ -55,14 +57,52 @@ public class TTSService extends Service {
                     }
                 });
 
+                String message = getIntentMessage();
+                if (message == null || message.trim().isEmpty()) {
+                    message = "Hyvää huomenta! Tämä on herätyksesi."; // Oletusteksti
+                }
+
                 tts.setLanguage(new Locale("fi"));
-                tts.speak("Hyvää huomenta! Tämä on herätyksesi.", TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
+                tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
             }
         });
+        */
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 🔹 Haetaan viesti Intentistä täällä
+        if (intent != null) {
+            alarmMessage = intent.getStringExtra("alarm_message");
+        }
+        if (alarmMessage == null || alarmMessage.trim().isEmpty()) {
+            alarmMessage = "Hyvää huomenta! Tämä on herätyksesi.";
+        }
+
+        // Käynnistetään TTS täällä
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.getDefault());
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override
+                    public void onStart(String utteranceId) {}
+
+                    @Override
+                    public void onDone(String utteranceId) {
+                        stopSelf();
+                    }
+
+                    @Override
+                    public void onError(String utteranceId) {
+                        stopSelf();
+                    }
+                });
+
+                tts.setLanguage(new Locale("fi"));
+                tts.speak(alarmMessage, TextToSpeech.QUEUE_FLUSH, null, "ALARM_UTTERANCE");
+            }
+        });
+        
         return START_STICKY;
         //return START_NOT_STICKY;
     }

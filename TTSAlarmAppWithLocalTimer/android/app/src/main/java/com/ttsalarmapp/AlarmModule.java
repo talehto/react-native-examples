@@ -25,10 +25,13 @@ public class AlarmModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void setAlarm(double timestamp) {
+    public void setAlarm(double timestamp, String message) {
         Context context = getReactApplicationContext();
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        
         Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.putExtra("alarm_message", message);
+
         int requestCode = (int) System.currentTimeMillis(); 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
