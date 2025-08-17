@@ -19,7 +19,13 @@ class AlarmReceiver : BroadcastReceiver() {
         // Starting a tts service.
         val serviceIntent = Intent(context, TTSService::class.java)
         serviceIntent.putExtra("alarm_message", finalMessage)
-        context.startForegroundService(serviceIntent)
+        
+        // Use startForegroundService for API 26+ and startService for older versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
 
         // Starting a stop dialog.
         val dialogIntent = Intent(context, AlarmDialogActivity::class.java)

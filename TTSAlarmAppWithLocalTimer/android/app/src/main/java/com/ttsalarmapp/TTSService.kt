@@ -16,10 +16,12 @@ import java.util.Locale
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 class TTSService : Service() {
     private var tts: TextToSpeech? = null
     private var alarmMessage: String? = null
+    private var packageName: String? = null
     private var repeatCount = 0
     private val stopReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -30,8 +32,16 @@ class TTSService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        // Register broadcast receiver
-        registerReceiver(stopReceiver, IntentFilter("com.ttsalarmapp.STOP_TTS_SERVICE"))
+        packageName = getPackageName()
+        Log.d("TTSService", "Service created with package: $packageName")
+
+        // Register broadcast receiver using ContextCompat for automatic API compatibility
+        ContextCompat.registerReceiver(
+            this,
+            stopReceiver, 
+            IntentFilter("com.ttsalarmapp.STOP_TTS_SERVICE"), 
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         if (Build.VERSION.SDK_INT >= 26) {
             val channel = NotificationChannel(
                     CHANNEL_ID, "TTS Channel", NotificationManager.IMPORTANCE_HIGH)
@@ -68,8 +78,9 @@ class TTSService : Service() {
         }
 
         // Starting the text-to-speech functionality. 
+        Log.d("TTSService", "Starting TTS with message: $alarmMessage")
         tts = TextToSpeech(this) { status ->
-            if (status === TextToSpeech.SUCCESS) {
+            if (status == TextToSpeech.SUCCESS) {
                 tts?.setLanguage(Locale("fi"))
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
@@ -82,6 +93,7 @@ class TTSService : Service() {
                         } else {
                             // Closing a "stop speech" dialog.
                             val doneIntent = Intent("com.ttsalarmapp.ACTION_ALARM_FINISHED")
+                            doneIntent.setPackage(packageName) // Explicitly target this app
                             sendBroadcast(doneIntent)
                             stopSelf()
                         }

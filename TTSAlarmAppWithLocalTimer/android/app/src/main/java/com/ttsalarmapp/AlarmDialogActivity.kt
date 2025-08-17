@@ -6,7 +6,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 
 class AlarmDialogActivity : Activity() {
     private val alarmFinishedReceiver: BroadcastReceiver = object : BroadcastReceiver() {
@@ -35,7 +37,13 @@ class AlarmDialogActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        registerReceiver(alarmFinishedReceiver, IntentFilter("com.ttsalarmapp.ACTION_ALARM_FINISHED"))
+        // Use ContextCompat for automatic API compatibility
+        ContextCompat.registerReceiver(
+            this,
+            alarmFinishedReceiver, 
+            IntentFilter("com.ttsalarmapp.ACTION_ALARM_FINISHED"), 
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onPause() {
